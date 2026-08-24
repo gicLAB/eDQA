@@ -1,0 +1,7 @@
+#include "acc_config.sc.h"
+#include "acc.sc.h"
+#include "compute.sc.h"
+#include "quantize.sc.h"
+#include "dequantize.sc.h"
+#include "huffman.sc.h"
+#include "codeword.sc.h"

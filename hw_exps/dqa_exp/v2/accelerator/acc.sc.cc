@@ -1,0 +1,6 @@
+#include "acc.sc.h"
+#include "acc_config.sc.h"
+#include "compute.sc.h"
+#include "dequantize.sc.h"
+#include "quantize.sc.h"
+#include "matmul.sc.h"
