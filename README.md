@@ -32,6 +32,9 @@ ml_exps/path/experiment_files/run_im.sh,<br>
 ml_exps/path/experiment_files/run_sript.sh<br>
 ml_exps/path/experiment_files/run_sript_six.sh.<br>
 
+### Namings
+Note that 'im' means the ImageNet and 'pot' means power-of-two quantization.
+
 
 
 
