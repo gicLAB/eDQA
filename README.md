@@ -4,7 +4,7 @@ This repo is the offical repo of paper [eDQA: Efficient Deep Quantization of DNN
 Edge Devices](https://openreview.net/pdf?id=SEIBCdgE5W).
 
 ## Introduction
-This repo is composed by two parts: algorithmic part (ml_exps) and hardware part (hw_exps). The hardware part correspond to the experiments in the section 4.4 of the paper and the algorithmic part correspond to the rest experiments. 
+This repo is composed by two parts: algorithmic part (ml_exps) and hardware part (hw_exps). The hardware part corresponds to the experiments in the section 4.4 of the paper and the algorithmic part corresponds to the rest experiments. 
 
 ## Algorithmic Part
 In this part, all the algorithms are embedded in the model files (ml_exps/experiment_files/models_with_algorithm).
