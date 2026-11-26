@@ -1,6 +1,6 @@
 import os
 import json
-import pickle
+import safe_io
 import matplotlib.pyplot as plt
 from collections import defaultdict
 
@@ -25,13 +25,8 @@ def plot_json_folder(json_folder, output_folder):
         #if file not in filename:
         #    continue
 
-        json_path = os.path.join(json_folder, filename)
-
-        # Load JSON
-        with open(json_path, "rb") as f:
-            p_data = pickle.load(f)
-            #print(p_data)
-        data = p_data
+        # Load result pickle
+        data = safe_io.load_data(json_folder, filename)
 
         if not data:
             print(f"Skipping empty file: {filename}")

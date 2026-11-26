@@ -12,15 +12,15 @@ from torch.utils.data import DataLoader
 import argparse
 import copy
 import numpy as np
-import pickle
+import safe_io
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--step_ft', type=int, default=15)
 parser.add_argument('--workers', type=int, default=4)
-parser.add_argument('--model', type=str, default='resnet32')
-parser.add_argument('--method', type=str, default='dqa')
+parser.add_argument('--model', type=str, default='resnet32', choices=['mobilev2', 'resnet18', 'resnet32', 'vit'])
+parser.add_argument('--method', type=str, default='dqa', choices=['baseline', 'dqa', 'easyquant', 'pot'])
 parser.add_argument('--bit', type=int, default=8)
 parser.add_argument('--exp_number', type=str, default='0')
 parser.add_argument('--seed', type=int, default=0)
@@ -175,5 +175,4 @@ res['time'] = avg_time
 print(res)
 
 
-with open('experiment_res/DQA_res_' + str(args.model) + '_' + str(args.method) + '_seed_' + str(args.seed) + '_bit_' + str(args.bit) + '_tmlr_base.pkl', 'wb') as file:
-    pickle.dump(res, file)
+safe_io.dump_data(res, 'experiment_res', 'DQA_res_' + str(args.model) + '_' + str(args.method) + '_seed_' + str(args.seed) + '_bit_' + str(args.bit) + '_tmlr_base.pkl')

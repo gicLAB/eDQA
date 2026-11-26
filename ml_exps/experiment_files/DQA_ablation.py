@@ -13,14 +13,14 @@ from models_with_algorithm.mobilenetv2_pad_saw_ablation import MobileNetV2
 import argparse
 import copy
 import numpy as np
-import pickle
+import safe_io
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--step_ft', type=int, default=15)
 parser.add_argument('--workers', type=int, default=4)
-parser.add_argument('--model', type=str, default='resnet32')
+parser.add_argument('--model', type=str, default='resnet32', choices=['densenet', 'mobilev2', 'resnet18', 'resnet32', 'vit'])
 parser.add_argument('--bit', type=int, default=8)
 parser.add_argument('--exp_number', type=str, default='0')
 parser.add_argument('--m', type=int, default=3)
@@ -174,7 +174,7 @@ elif args.model == 'resnet18':
     checkpoint = 'experiment_files/models/res_18_tinyimagenet_50_epochs.pth'
 '''
 
-checkpoint = torch.load(checkpoint, map_location='cuda:0')
+checkpoint = torch.load(checkpoint, map_location='cuda:0', weights_only=True)
 model.load_state_dict(checkpoint['state_dict'])
 acc_post_val, avg_time = validate(val_loader, model, L_cls_f, 'test')
 
@@ -196,5 +196,4 @@ res['ucu'] = avg_ucu
 print(res)
 
 
-with open('experiment_res/abl_verify_again/DQA_res_abl_' + str(args.model) +'_m_' + str(args.m) +'_imp_'+str(int(args.imp_ratio * 100))+'_seed_' + str(args.seed) + '_bit_' + str(args.bit) + '.pkl', 'wb') as file:
-    pickle.dump(res, file)
+safe_io.dump_data(res, 'experiment_res/abl_verify_again', 'DQA_res_abl_' + str(args.model) +'_m_' + str(args.m) +'_imp_'+str(int(args.imp_ratio * 100))+'_seed_' + str(args.seed) + '_bit_' + str(args.bit) + '.pkl')

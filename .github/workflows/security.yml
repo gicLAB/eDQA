@@ -1,0 +1,257 @@
+name: Security scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1" # weekly, Monday 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash # explicit bash => -eo pipefail, so `cmd | tee` keeps cmd's exit code
+
+jobs:
+  # SAST for Python and C/C++ (drivers in hw_exps). build-mode "none" means
+  # no Bazel/CFU build is needed; results land in Security > Code scanning.
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, c-cpp, actions]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
+          output: sarif-results # also keep a local copy for the report job
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scan-codeql-${{ matrix.language }}
+          path: sarif-results/*.sarif
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Python-specific SAST. Reports to Code scanning instead of failing the build,
+  # since research code trips many low-signal rules.
+  bandit:
+    name: Bandit (Python)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install "bandit[sarif]"
+      # B311: `random` used for experiments, not crypto.
+      - run: bandit -r . --severity-level medium --skip B311 -f sarif -o bandit.sarif --exit-zero
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: bandit.sarif
+          category: bandit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scan-bandit
+          path: bandit.sarif
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Leaked tokens/keys anywhere in git history. Fails on verified/unknown secrets.
+  # Only a redacted listing (detector, file, line, commit) is kept, never the secret.
+  secrets:
+    name: Secret scan (TruffleHog)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Scan full git history
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/trufflesecurity/trufflehog:latest \
+            git file:///repo --results=verified,unknown --json --no-update > trufflehog.jsonl
+          jq -r '[.DetectorName,
+                  (if .Verified then "verified" else "unverified" end),
+                  .SourceMetadata.Data.Git.file, (.SourceMetadata.Data.Git.line|tostring),
+                  (.SourceMetadata.Data.Git.commit[0:8])] | @tsv' trufflehog.jsonl > trufflehog.tsv
+          rm trufflehog.jsonl
+          n=$(wc -l < trufflehog.tsv)
+          echo "TruffleHog findings: $n"
+          cut -f1,3,4 trufflehog.tsv
+          [ "$n" -eq 0 ]
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scan-secrets
+          path: trufflehog.tsv
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # The repo ships .pkl / .pth / .th files; loading a malicious pickle runs
+  # arbitrary code. Fails if any file imports dangerous globals.
+  pickle-scan:
+    name: Pickle / model file scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true # .pth/.th are stored in Git LFS
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install picklescan
+      - run: picklescan --path . 2>&1 | tee picklescan.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scan-pickle
+          path: picklescan.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          git ls-files -z '*.sh' | xargs -0 --no-run-if-empty \
+            shellcheck --shell=bash --severity=error --format=gcc 2>&1 | tee shellcheck.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scan-shellcheck
+          path: shellcheck.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Collects every job's output into one Markdown report: shown on the run's
+  # Summary page and uploaded as the `security-report` artifact.
+  report:
+    name: Summary report
+    runs-on: ubuntu-latest
+    needs: [codeql, bandit, secrets, pickle-scan, shellcheck]
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: scan-*
+          merge-multiple: true
+          path: reports
+      - name: Build report
+        env:
+          R_CODEQL: ${{ needs.codeql.result }}
+          R_BANDIT: ${{ needs.bandit.result }}
+          R_SECRETS: ${{ needs.secrets.result }}
+          R_PICKLE: ${{ needs.pickle-scan.result }}
+          R_SHELL: ${{ needs.shellcheck.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          cd reports
+          out=../security-report.md
+          icon() { case "$1" in success) echo "✅ passed";; failure) echo "❌ failed";;
+                   cancelled) echo "⚪ cancelled";; *) echo "⏭️ $1";; esac; }
+          count() { if [ -s "$1" ]; then grep -c . "$1"; else echo 0; fi; }
+          sarif_n() { [ -s "$1" ] && jq '[.runs[].results[]?] | length' "$1" || echo "n/a"; }
+
+          # One section per SARIF file: totals by level, top rules, first findings.
+          sarif_section() {
+            local title=$1 f=$2
+            echo "### $title"
+            if [ ! -s "$f" ]; then echo "_No results file (job failed or was skipped)._"; echo; return; fi
+            local n; n=$(sarif_n "$f")
+            if [ "$n" -eq 0 ]; then echo "No findings."; echo; return; fi
+            echo "**$n findings** ($(jq -r '[.runs[].results[]? | (.level // "warning")]
+              | group_by(.) | map("\(.[0]): \(length)") | join(", ")' "$f"))"
+            echo
+            echo "| Rule | Count |"; echo "|---|---|"
+            jq -r '[.runs[].results[]?.ruleId] | group_by(.) | map({r: .[0], n: length})
+              | sort_by(-.n) | .[:10][] | "| `\(.r)` | \(.n) |"' "$f"
+            echo
+            echo "<details><summary>First 25 findings</summary>"; echo
+            echo "| Level | Rule | Location | Message |"; echo "|---|---|---|---|"
+            jq -r '.runs[].results[]? | [ (.level // "warning"), .ruleId,
+                (.locations[0].physicalLocation | "\(.artifactLocation.uri):\(.region.startLine // "?")"),
+                (.message.text | gsub("[\r\n]+"; " ") | gsub("\\|"; "\\|") | .[0:140]) ]
+              | "| \(.[0]) | `\(.[1])` | `\(.[2])` | \(.[3]) |"' "$f" | head -25
+            echo; echo "</details>"; echo
+          }
+
+          {
+            echo "# Security scan report"
+            echo
+            echo "Commit \`${GITHUB_SHA:0:8}\` on \`${GITHUB_REF_NAME}\` · [workflow run]($RUN_URL)"
+            echo
+            echo "| Scan | Job result | Findings |"
+            echo "|---|---|---|"
+            codeql_total=0
+            for l in python cpp actions; do  # CodeQL names the c-cpp SARIF "cpp.sarif"
+              n=$(sarif_n "$l.sarif"); [ "$n" != "n/a" ] && codeql_total=$((codeql_total + n))
+            done
+            echo "| CodeQL (python, c-cpp, actions) | $(icon "$R_CODEQL") | $codeql_total |"
+            echo "| Bandit (Python) | $(icon "$R_BANDIT") | $(sarif_n bandit.sarif) |"
+            echo "| Secrets (TruffleHog) | $(icon "$R_SECRETS") | $(count trufflehog.tsv) |"
+            echo "| Pickle / model files | $(icon "$R_PICKLE") | $( [ -s picklescan.txt ] \
+                  && sed -n 's/^Dangerous globals: *//p' picklescan.txt || echo n/a ) dangerous globals |"
+            echo "| ShellCheck | $(icon "$R_SHELL") | $(count shellcheck.txt) |"
+            echo
+            echo "CodeQL and Bandit report only; they do not fail the run. Full alerts: Security → Code scanning."
+            echo
+            echo "## Details"
+            echo
+            sarif_section "CodeQL: Python" python.sarif
+            sarif_section "CodeQL: C/C++" cpp.sarif
+            sarif_section "CodeQL: GitHub Actions" actions.sarif
+            sarif_section "Bandit" bandit.sarif
+
+            echo "### Secrets (TruffleHog)"
+            if [ -s trufflehog.tsv ]; then
+              echo "| Detector | Status | File | Line | Commit |"; echo "|---|---|---|---|---|"
+              awk -F'\t' '{printf "| %s | %s | `%s` | %s | `%s` |\n",$1,$2,$3,$4,$5}' trufflehog.tsv
+              echo; echo "Rotate any verified credential first, then remove it from history."
+            elif [ "$R_SECRETS" = success ]; then echo "No secrets found."
+            else echo "_No results file (job failed before scanning or was skipped)._"; fi
+            echo
+
+            echo "### Pickle / model files"
+            if [ -s picklescan.txt ]; then
+              echo '```'; tail -n 30 picklescan.txt; echo '```'
+            else echo "_No results file._"; fi
+            echo
+
+            echo "### ShellCheck"
+            if [ -s shellcheck.txt ]; then
+              echo '```'; head -n 50 shellcheck.txt; echo '```'
+            elif [ "$R_SHELL" = success ]; then echo "No errors."
+            else echo "_No results file._"; fi
+          } > "$out"
+
+          cat "$out" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          retention-days: 30

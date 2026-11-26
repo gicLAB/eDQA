@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch import Tensor
 
 import math
-import pickle
+import safe_io
 
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
@@ -84,9 +84,7 @@ class BasicBlock(nn.Module):
         self.m = m
 
     def get_channel_map(self):
-        with open('/home/wenhao/DQA_Exp_Ext/ResNet32_Path_local/experiment_res/path_resnet18_seed_' + str(
-                self.seed) + '.pkl', 'rb') as file:
-            data = pickle.load(file)
+        data = safe_io.load_data('/home/wenhao/DQA_Exp_Ext/ResNet32_Path_local/experiment_res', 'path_resnet18_seed_' + str(self.seed) + '.pkl')
         return data
 
     def build_huffman_tree(self, diff):

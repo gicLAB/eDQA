@@ -1,4 +1,8 @@
-import pickle
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'experiment_files'))
+import safe_io  # noqa: E402
 
 model = 'resnet32'
 mega = 1024 * 1024
@@ -10,12 +14,11 @@ for bit in range(3, 6):
     overhead = 0
     overhead_all = 0
     for seed in range(5):
-        with open('experiment_res/noisy_res_' + str(model) + '_seed_' + str(seed) + '_bit_' + str(bit) + '.pkl', 'rb') as file:
-            data = pickle.load(file)
-            print(data)
-            acc = acc + data['acc']/5
-            time = time + data['time']/5
-            mem = mem + data['mem']/5
+        data = safe_io.load_data('experiment_res', 'noisy_res_' + str(model) + '_seed_' + str(seed) + '_bit_' + str(bit) + '.pkl')
+        print(data)
+        acc = acc + data['acc']/5
+        time = time + data['time']/5
+        mem = mem + data['mem']/5
         #break
             #act = act + data['act']/10
             #overhead = overhead + data['overhead']/10

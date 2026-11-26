@@ -15,15 +15,15 @@ import models_with_algorithm.vision_transformer_pad_saw_easyquant as vit
 import argparse
 import copy
 import numpy as np
-import pickle
+import safe_io
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--step_ft', type=int, default=15)
 parser.add_argument('--workers', type=int, default=4)
-parser.add_argument('--model', type=str, default='resnet32')
-parser.add_argument('--method', type=str, default='eq')
+parser.add_argument('--model', type=str, default='resnet32', choices=['mobilev2_cifar', 'mobilev2_im', 'resnet18_cifar', 'resnet18_im', 'resnet32', 'resnet32_cifar', 'resnet32_im', 'vit_cifar', 'vit_im'])
+parser.add_argument('--method', type=str, default='eq', choices=['eq'])
 parser.add_argument('--bit', type=int, default=8)
 parser.add_argument('--exp_number', type=str, default='0')
 parser.add_argument('--seed', type=int, default=0)
@@ -232,7 +232,7 @@ elif args.model == 'resnet18_cifar':
 
 
 
-checkpoint = torch.load(checkpoint, map_location='cuda:0')
+checkpoint = torch.load(checkpoint, map_location='cuda:0', weights_only=True)
 
 if args.model == 'resnet32_cifar' or args.model == 'mobilev2_cifar':
     model.load_state_dict(checkpoint['state_dict'])
@@ -249,5 +249,4 @@ res['time'] = avg_time
 
 print(res)
 
-with open('experiment_res/DQA_res_' + str(args.model) + '_' + str(args.method) + '_seed_' + str(args.seed) + '_bit_' + str(args.bit) + '_easyquant.pkl', 'wb') as file:
-    pickle.dump(res, file)
+safe_io.dump_data(res, 'experiment_res', 'DQA_res_' + str(args.model) + '_' + str(args.method) + '_seed_' + str(args.seed) + '_bit_' + str(args.bit) + '_easyquant.pkl')

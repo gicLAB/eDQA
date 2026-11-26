@@ -16,7 +16,7 @@ import models_with_algorithm.vision_transformer_path as vit
 import argparse
 import copy
 import numpy as np
-import pickle
+import safe_io
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=str, default='0')
@@ -24,7 +24,7 @@ parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--step_ft', type=int, default=15)
 parser.add_argument('--ft_lr', type=float, default=0.001)
 parser.add_argument('--workers', type=int, default=4)
-parser.add_argument('--model', type=str, default='resnet32')
+parser.add_argument('--model', type=str, default='resnet32', choices=['densenet', 'mobilev2', 'resnet18', 'resnet32', 'vit'])
 parser.add_argument('--exp_number', type=str, default='0')
 parser.add_argument('--seed', type=int, default=0)
 
@@ -174,7 +174,7 @@ for layer in range(0, layers_num):
             model = nn.DataParallel(model, device_ids=[0]).cuda()
             checkpoint = 'experiment_files/models/res_18_tinyimagenet_50_epochs.pth'
         
-        checkpoint = torch.load(checkpoint, map_location='cuda:0')
+        checkpoint = torch.load(checkpoint, map_location='cuda:0', weights_only=True)
         #model.load_state_dict(checkpoint['state_dict'])
         model.load_state_dict(checkpoint)
         st = time.time()
@@ -191,5 +191,4 @@ for layer in range(0, layers_num):
     layer_channel_rank[layer] = channel_sorted
     print(layer_channel_rank)
 
-with open('experiment_res/path_' + str(args.model) + '_seed_' + str(args.seed) + '.pkl', 'wb') as file:
-    pickle.dump(layer_channel_rank, file)
+safe_io.dump_data(layer_channel_rank, 'experiment_res', 'path_' + str(args.model) + '_seed_' + str(args.seed) + '.pkl')
