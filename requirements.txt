@@ -1,0 +1,10 @@
+# Python dependencies for ml_exps/ (third-party imports only).
+# Python 3.9+ (the notebook kernel was 3.9.19).
+# These are lower bounds. To pin the exact versions you ran with:
+#   pip freeze | grep -iE '^(torch|torchvision|numpy|pandas|matplotlib|zstandard)=='
+torch>=2.0
+torchvision>=0.15
+numpy>=1.23
+pandas>=1.5
+matplotlib>=3.6
+zstandard>=0.19
