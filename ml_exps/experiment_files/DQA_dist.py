@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 import argparse
 import copy
 import numpy as np
-import pickle
+import safe_io
 
 import models_with_algorithm.resnet_pad_saw_dist as resnet
 import models_with_algorithm.mobilenetv2_pad_saw_dist as mobilenet
@@ -24,12 +24,12 @@ parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--step_ft', type=int, default=15)
 parser.add_argument('--workers', type=int, default=4)
-parser.add_argument('--model', type=str, default='resnet32')
+parser.add_argument('--model', type=str, default='resnet32', choices=['mobilev2_cifar', 'mobilev2_im', 'resnet18_cifar', 'resnet18_im', 'resnet32', 'resnet32_cifar', 'resnet32_im', 'vit_cifar', 'vit_im'])
 parser.add_argument('--bit', type=int, default=8)
 parser.add_argument('--exp_number', type=str, default='0')
 parser.add_argument('--m', type=int, default=3)
 parser.add_argument('--imp_ratio', type=float, default=0.4)
-parser.add_argument('--comp', type=str, default='huffman')
+parser.add_argument('--comp', type=str, default='huffman', choices=['huffman', 'deflate', 'lzma', 'zstd'])
 parser.add_argument('--seed', type=int, default=0)
 
 
@@ -215,7 +215,7 @@ elif args.model == 'resnet18_cifar':
     checkpoint = '/home/wenhao/DQA_Exp_Ext/train_model/resnet18_cifar_shuffle_50_epochs.pth'
 
 
-checkpoint = torch.load(checkpoint, map_location='cuda:0')
+checkpoint = torch.load(checkpoint, map_location='cuda:0', weights_only=True)
 
 if args.model == 'resnet32_cifar' or args.model == 'mobilev2_cifar':
     model.load_state_dict(checkpoint['state_dict'])
@@ -227,5 +227,4 @@ res = validate(val_loader, model, L_cls_f, 'test')
 print(res)
 
 
-with open('experiment_res/DQA_res_abl_' + str(args.model) + '_bit_' + str(args.bit) + '_dist.pkl', 'wb') as file:
-    pickle.dump(res, file)
+safe_io.dump_data(res, 'experiment_res', 'DQA_res_abl_' + str(args.model) + '_bit_' + str(args.bit) + '_dist.pkl')

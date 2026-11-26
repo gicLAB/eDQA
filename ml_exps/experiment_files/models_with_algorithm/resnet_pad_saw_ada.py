@@ -41,7 +41,7 @@ import random
 from collections import Counter, namedtuple
 import heapq
 from models_with_algorithm.util import *
-import pickle
+import safe_io
 __all__ = ['ResNet', 'resnet20', 'resnet32', 'resnet44', 'resnet56', 'resnet110', 'resnet1202']
 
 def _weights_init(m):
@@ -117,8 +117,7 @@ class BasicBlock(nn.Module):
                 )
     
     def get_channel_map(self):
-        with open('/home/wenhao/DQA_Exp_fix/classification/ResNet32_Path/experiment_res/path_resnet32_seed_' + str(self.seed) + '.pkl', 'rb') as file:
-            data = pickle.load(file)
+        data = safe_io.load_data('/home/wenhao/DQA_Exp_fix/classification/ResNet32_Path/experiment_res', 'path_resnet32_seed_' + str(self.seed) + '.pkl')
         return data
 
     def build_huffman_tree(self, diff):
@@ -277,7 +276,7 @@ class BasicBlock(nn.Module):
         
         return delta_lower * (quantized + diff)
     
-    def def get_soft_targets(self):
+    def get_soft_targets(self):
         return torch.clamp(torch.sigmoid(self.alpha) * (self.zeta - self.gamma) + self.gamma, 0, 1)
 
     def init_alpha(self, x: torch.Tensor):

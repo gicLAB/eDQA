@@ -40,7 +40,7 @@ import random
 from collections import Counter, namedtuple
 import heapq
 from models_with_algorithm.util import *
-import pickle
+import safe_io
 __all__ = ['ResNet', 'resnet20', 'resnet32', 'resnet44', 'resnet56', 'resnet110', 'resnet1202']
 
 def _weights_init(m):
@@ -104,8 +104,7 @@ class BasicBlock(nn.Module):
                 )
     
     def get_channel_map(self):
-        with open('/home/wenhao/DQA_Exp_Ext/ResNet32_Path_local/experiment_res/path_resnet32_seed_' + str(self.seed) + '_ext.pkl', 'rb') as file:
-            data = pickle.load(file)
+        data = safe_io.load_data('/home/wenhao/DQA_Exp_Ext/ResNet32_Path_local/experiment_res', 'path_resnet32_seed_' + str(self.seed) + '_ext.pkl')
         return data
 
     def build_huffman_tree(self, diff):

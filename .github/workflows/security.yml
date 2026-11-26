@@ -208,7 +208,7 @@ jobs:
             echo "| Scan | Job result | Findings |"
             echo "|---|---|---|"
             codeql_total=0
-            for l in python c-cpp actions; do
+            for l in python cpp actions; do  # CodeQL names the c-cpp SARIF "cpp.sarif"
               n=$(sarif_n "$l.sarif"); [ "$n" != "n/a" ] && codeql_total=$((codeql_total + n))
             done
             echo "| CodeQL (python, c-cpp, actions) | $(icon "$R_CODEQL") | $codeql_total |"
@@ -223,7 +223,7 @@ jobs:
             echo "## Details"
             echo
             sarif_section "CodeQL: Python" python.sarif
-            sarif_section "CodeQL: C/C++" c-cpp.sarif
+            sarif_section "CodeQL: C/C++" cpp.sarif
             sarif_section "CodeQL: GitHub Actions" actions.sarif
             sarif_section "Bandit" bandit.sarif
 

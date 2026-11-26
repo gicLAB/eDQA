@@ -40,7 +40,6 @@ import random
 from collections import Counter, namedtuple
 import heapq
 from models_with_algorithm.util import *
-import pickle
 __all__ = ['ResNet', 'resnet20', 'resnet32', 'resnet44', 'resnet56', 'resnet110', 'resnet1202']
 
 def _weights_init(m):

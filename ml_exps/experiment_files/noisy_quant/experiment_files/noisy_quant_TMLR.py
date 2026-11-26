@@ -17,14 +17,14 @@ import models_with_algorithm.vision_transformer_noisy as vit
 import argparse
 import copy
 import numpy as np
-import pickle
+import safe_io
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=str, default='0')
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--step_ft', type=int, default=15)
 parser.add_argument('--workers', type=int, default=4)
-parser.add_argument('--model', type=str, default='resnet32')
+parser.add_argument('--model', type=str, default='resnet32', choices=['densenet', 'mobilev2', 'resnet18', 'resnet32', 'vit'])
 parser.add_argument('--bit', type=int, default=8)
 parser.add_argument('--exp_number', type=str, default='0')
 parser.add_argument('--seed', type=int, default=0)
@@ -127,7 +127,7 @@ elif args.model == 'resnet18':
     #model.fc = nn.Linear(model.fc.in_features, 10)
     model = nn.DataParallel(model, device_ids=args.gpu).cuda()
 
-#checkpoint = torch.load(checkpoint, map_location='cuda:0')
+#checkpoint = torch.load(checkpoint, map_location='cuda:0', weights_only=True)
 #model.load_state_dict(checkpoint)
 loss_val, acc_post_val, avg_time = validate(val_loader, model, L_cls_f, 'test')
 
@@ -138,5 +138,4 @@ res['time'] = avg_time
 print(res)
 
 
-with open('experiment_res/noisy_res_' + str(args.model) + '_seed_' + str(args.seed) + '_bit_' + str(args.bit) + '_tmlr.pkl', 'wb') as file:
-    pickle.dump(res, file)
+safe_io.dump_data(res, 'experiment_res', 'noisy_res_' + str(args.model) + '_seed_' + str(args.seed) + '_bit_' + str(args.bit) + '_tmlr.pkl')

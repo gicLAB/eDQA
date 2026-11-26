@@ -11,7 +11,7 @@ import random
 from collections import Counter, namedtuple
 import heapq
 from models_with_algorithm.util import *
-import pickle
+import safe_io
 
 class Block(nn.Module):
     class Node(namedtuple('Node', ['freq', 'value', 'left', 'right'])):
@@ -52,8 +52,7 @@ class Block(nn.Module):
             )
 
     def get_channel_map(self):
-        with open('/home/wenhao/DQA_Exp_Ext/ResNet32_Path_local/experiment_res/path_mobilev2_seed_' + str(self.seed) + '_ext.pkl', 'rb') as file:
-            data = pickle.load(file)
+        data = safe_io.load_data('/home/wenhao/DQA_Exp_Ext/ResNet32_Path_local/experiment_res', 'path_mobilev2_seed_' + str(self.seed) + '_ext.pkl')
         return data
 
     def get_mem(self):

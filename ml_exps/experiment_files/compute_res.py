@@ -1,6 +1,6 @@
 import os
 import re
-import pickle
+import safe_io
 import numpy as np
 from collections import defaultdict
 
@@ -31,11 +31,9 @@ def average_acc_by_prefix(folder_path):
         '''
 
         prefix = match.group(1)
-        file_path = os.path.join(folder_path, filename)
 
         try:
-            with open(file_path, "rb") as f:
-                data = pickle.load(f)
+            data = safe_io.load_data(folder_path, filename)
 
             if "acc" not in data:
                 print(f"Warning: 'acc' key not found in {filename}")

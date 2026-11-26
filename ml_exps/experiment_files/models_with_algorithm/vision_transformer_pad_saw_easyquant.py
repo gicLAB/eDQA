@@ -18,7 +18,6 @@ import numpy as np
 from collections import Counter, namedtuple
 import heapq
 from models_with_algorithm.util import *
-import pickle
 
 class MLPBlock(MLP):
     """Transformer MLP block."""

@@ -11,7 +11,6 @@ import random
 from collections import Counter, namedtuple
 import heapq
 from models_with_algorithm.util import *
-import pickle
 
 class Block(nn.Module):
     class Node(namedtuple('Node', ['freq', 'value', 'left', 'right'])):

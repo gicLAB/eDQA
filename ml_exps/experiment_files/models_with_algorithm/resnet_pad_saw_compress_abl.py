@@ -40,7 +40,7 @@ import random
 from collections import Counter, namedtuple
 import heapq
 from models_with_algorithm.util import *
-import pickle
+import safe_io
 import zlib
 import lzma
 import zstandard as zstd
@@ -113,8 +113,7 @@ class BasicBlock(nn.Module):
                 )
     
     def get_channel_map(self):
-        with open('/home/wenhao/DQA_Exp_fix/classification/ResNet32_Path/experiment_res/path_resnet32_seed_' + str(self.seed) + '.pkl', 'rb') as file:
-            data = pickle.load(file)
+        data = safe_io.load_data('/home/wenhao/DQA_Exp_fix/classification/ResNet32_Path/experiment_res', 'path_resnet32_seed_' + str(self.seed) + '.pkl')
         return data
 
     def build_huffman_tree(self, diff):

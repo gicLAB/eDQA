@@ -9,7 +9,6 @@ import torch.nn.functional as F
 from torch import Tensor
 
 import math
-import pickle
 
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
